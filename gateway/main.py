@@ -1,4 +1,5 @@
-from mqtt import MQTTClient
+# from mqtt import MQTTClient
+from umqttsimple import MQTTClient
 from network import WLAN
 from network import LoRa
 import machine
@@ -8,6 +9,7 @@ import json
 import time
 
 def sub_cb(topic, msg):
+   print(topic)
    print(msg)
 
 def load_config():
@@ -19,8 +21,8 @@ def wifi_connect(wifi_config):
     print('Connecting to WiFi...',  end='')
     wlan = WLAN(mode=WLAN.STA)
     wlan.connect(
-        ssid="goncalo-x1",  # wifi_config['ssid'],
-        auth=(WLAN.WPA2, "yBJV3Jg1"), # wifi_config['password']),
+        ssid=wifi_config['ssid'],
+        auth=(WLAN.WPA2, wifi_config['password']),
         timeout=5000
     )
 
@@ -31,14 +33,28 @@ def wifi_connect(wifi_config):
 
     pycom.rgbled(0x103300)
 
+def get_lora_socket():
+    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868)
+    lora_socket = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+    lora_socket.setblocking(False)
+    return lora_socket
+
+def get_mqtt_client(mqtt_config):
+    mqtt_client = MQTTClient(
+        mqtt_config["client_id"],
+        mqtt_config["server"],
+        port=mqtt_config["port"]
+    )
+    mqtt_client.set_callback(sub_cb)
+    mqtt_client.connect()
+    return mqtt_client
+
 #------------------------------------------
 
 pycom.heartbeat(False)
 
 # Load config
 conf = load_config()
-
-print(conf)
 
 # Connect to wifi
 if "network" not in conf:
@@ -47,29 +63,34 @@ if "network" not in conf:
 
 wifi_connect(conf["network"])
 
-lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868)
-s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-s.setblocking(False)
-i = 0
+# LoRa client
+lora_socket = get_lora_socket()
+
+# MQTT client
+if "mqtt" not in conf:
+    print("[ERROR] MQTT config missing")
+    exit(1)
+
+mqtt_client = get_mqtt_client(conf["mqtt"])
+mqtt_client.subscribe(topic=conf["mqtt"]["topics"]["subscribe"])
+
+pong_counter = 0
 while True:
-    if s.recv(64) == b'Ping':
-        s.send('Pong')
-        print('Pong {}'.format(i))
-        i = i+1
+    pycom.rgbled(0x00ff00)
+
+    if lora_socket.recv(64) == b'Ping':
+        lora_socket.send('Pong')
+        print('Pong {}'.format(pong_counter))
+        pong_counter += 1
+    
+    mqtt_client.check_msg()
+    
+    print("Sending ON")
+    mqtt_client.publish(topic=conf["mqtt"]["topics"]["publish"], msg="ON")
     time.sleep(5)
+    print("Sending OFF")
+    mqtt_client.publish(topic=conf["mqtt"]["topics"]["publish"], msg="OFF")
 
-# client = MQTTClient("device_id", "io.adafruit.com",user="your_username", password="your_api_key", port=1883)
+    pycom.rgbled(0xff0000)
 
-# client.set_callback(sub_cb)
-# client.connect()
-# client.subscribe(topic="youraccount/feeds/lights")
-
-# while True:
-#     print("Sending ON")
-#     client.publish(topic="youraccount/feeds/lights", msg="ON")
-#     time.sleep(1)
-#     print("Sending OFF")
-#     client.publish(topic="youraccount/feeds/lights", msg="OFF")
-#     client.check_msg()
-
-#     time.sleep(1)
+    time.sleep(10)
