@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 import time
 
-broker_address="broker.hivemq.com"
+broker_address="localhost" #"broker.hivemq.com"
 broker_port=1883
 
 client = mqtt.Client("server")

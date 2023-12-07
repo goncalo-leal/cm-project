@@ -1,13 +1,13 @@
 {
     "network":
     {
-        "ssid": "goncalo-a54",
-        "password": "paaaassss"
+        "ssid": "goncalo-x1",
+        "password": "yBJV3Jg1"
     },
     "mqtt":
     {
         "client_id": "gateway",
-        "server": "broker.hivemq.com",
+        "server": "192.168.100.124",
         "port": 1883,
         "topics": {
             "publish": "cm-project/gateway",

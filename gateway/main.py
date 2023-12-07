@@ -26,9 +26,18 @@ def wifi_connect(wifi_config):
         timeout=5000
     )
 
-    while not wlan.isconnected():
-        print('.', end='') 
-        machine.idle()
+    try:
+        while not wlan.isconnected():
+            print('.', end='') 
+            machine.idle()
+    except:
+        print("Error connecting to WiFi")
+        pycom.rgbled(0xff0000)
+        time.sleep(5)
+        wifi_connect(wifi_config)
+    
+    # TODO: sleep and retry
+
     print("Connected to WiFi\n")
 
     pycom.rgbled(0x103300)
