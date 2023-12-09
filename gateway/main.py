@@ -5,24 +5,17 @@ import socket
 import time
 import pycom
 # from lib.utils import parse_packet,compose_packet,icmp_request
-from utils import parse_packet, icmp_request, tcp_syn, tcp_ack,setUp
+from utils import parse_packet, icmp_request, tcp_syn, tcp_ack, config
 
 # COM4
 
-# LoRa Configuration:
-lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868)
+lora, s = config()
+mac = lora.mac()
 
-# Socket Configuration:
-s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-s.setblocking(False)
-
-# COM4
 
 known_nodes = [b'p\xb3\xd5I\x99x1_']
 active_nodes = []
 
-
-# info, socket_info = setUp()
 
 while True:
     '''
@@ -64,7 +57,7 @@ while True:
     if hasSynAck:
         ack = tcp_ack(mac, known_nodes[0], syn_ack[4], message)
         s.send(ack)
-        print('ACK: ', parse_packet(ack,True))
+        print('ACK: ', parse_packet(ack, True))
         timeout = time.time() + 5
 
         while time.time() < timeout:
