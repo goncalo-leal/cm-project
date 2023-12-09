@@ -5,7 +5,8 @@ import socket
 import time
 import pycom
 # from lib.utils import parse_packet,compose_packet,icmp_request
-from utils import parse_packet, icmp_request, tcp_syn, tcp_ack, config
+from utils import buffer,parse_packet, icmp_request, tcp_syn, tcp_ack, config,decrease_or_discard,exist_in_buffer
+import _thread
 
 # COM4
 
@@ -18,54 +19,17 @@ active_nodes = []
 
 
 while True:
-    '''
-    print('Sending request')
 
-    for node in known_nodes:
-        # get the mac from the info dictionary
-        # mac = info['mac']
-        # print("In main.py, mac:" + str(mac))
+    # Testing connectivity
+    if len(active_nodes) != len(known_nodes):
+        for node in known_nodes:
+            if node not in active_nodes and not exist_in_buffer([(0,0),[3,mac],(4,node)]):
+                _thread.start_new_thread(icmp_request, (mac, node,))
 
-        request = icmp_request(lora.mac(),node)
-
-        if request:
-            print('Request received')
-            if request not in active_nodes:
-                active_nodes.append(request)
-
-    print(active_nodes)
-    '''
-    syn = tcp_syn(mac, known_nodes[0])
-    print("SYN:", parse_packet(syn))
-    s.send(syn)
-    timeout = time.time() + 5
-    message = "Hello World!"
-
-    hasSynAck = False
-
-    while time.time() < timeout:
-        packet = s.recv(512)
-
-        if packet:
-            syn_ack = parse_packet(packet)
-            print('SYNACK:', syn_ack)
-            if syn_ack[0] == 0x3:
-                hasSynAck = True
-                print('SYNACK received')
-                break
-
-    if hasSynAck:
-        ack = tcp_ack(mac, known_nodes[0], syn_ack[4], message)
-        s.send(ack)
-        print('ACK: ', parse_packet(ack, True))
-        timeout = time.time() + 5
-
-        while time.time() < timeout:
-            packet = s.recv(128)
-
-            if packet:
-                fin = parse_packet(packet)
-                if fin[0] == 0x5:
-                    print('FIN:', fin)
-
-    time.sleep(5)
+            
+    print("Known nodes: ", known_nodes)
+    print("Active nodes: ", active_nodes)
+    print("Buffer: ", buffer)
+    
+    buffer = decrease_or_discard(buffer)
+    time.sleep(10)

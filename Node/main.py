@@ -1,8 +1,10 @@
-from network import LoRa
+import network
 import socket
 import time
 import pycom
-from utils import parse_packet, compose_packet, icmp_reply, tcp_fin, tcp_synack,config
+# from lib.utils import parse_packet,compose_packet,icmp_request
+from utils import buffer,parse_packet, icmp_reply, tcp_syn, tcp_ack, config,decrease_or_discard,exist_in_buffer
+import _thread
 
 # COM6
 
@@ -11,24 +13,15 @@ lora, s = config()
 mac = lora.mac()
 
 while True:
-    packet = s.recv(512)
-    hasSync = False
+    try:
+        packet = parse_packet(s.recv(64))
+    except Exception:
+        packet = parse_packet(s.recv(64),True)
+
     if packet:
-        syn = parse_packet(packet)
-        print('SYN', syn)
-        if syn[0] == 0x2:
-            syn_ack = tcp_synack(mac, syn[2], syn[4])
-            s.send(syn_ack)
-            hasSync = True
+        if packet[0] == 0x0 and not exist_in_buffer([(0,1),[3,mac],(4,packet[3])]):
+            _thread.start_new_thread(icmp_reply, (mac, packet[3],))
+        
 
-    if hasSync:
-        packet = s.recv(512)
-        if packet:
-            ack = parse_packet(packet,True)
-            print('ACK:', ack)
-            if ack[0] == 0x4:
-                print('Message: ', ack[5])
-                fin = tcp_fin(mac, ack[2], 1)
-                s.send(fin)
-
+    buffer = decrease_or_discard(buffer)
     time.sleep(0.5)

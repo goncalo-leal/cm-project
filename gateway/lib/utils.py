@@ -8,12 +8,13 @@ import os
 # ----------------------------------
 # https://docs.python.org/3/library/struct.html
 PROTOCOLS = {
-    0x0: '!BH8s8s',             # ICMP Request: id, size, MAC src, MAC dest
-    0x1: '!BH8s8s',             # ICMP Reply: id, size, MAC dst, MAC src
-    0x2: '!BH8s8sB',            # TCP Syn: id, size, MAC src, MAC dest, synID
-    0x3: '!BH8s8sBB',           # TCP SynAck: id, size, MAC src, MAC dest, synID, ackID
-    0x4: '!BQ8s8sB%ds',         # TCP Ack: id, size, MAC src, MAC dest, ackID, data
-    0x5: '!BH8s8sB',            # TCP Fin: id, size, MAC src, MAC dest, finID
+    0x0: '!BBH8s8s',             # ICMP Request: id, timeout, size, MAC src, MAC dest
+    0x1: '!BBH8s8s',             # ICMP Reply: id, timeout, size, MAC dst, MAC src
+    0x2: '!BBH8s8sB',            # TCP Syn: id, timeout, size, MAC src, MAC dest, synID
+    # TCP SynAck: id, timeout, size, MAC src, MAC dest, synID, ackID
+    0x3: '!BBH8s8sBB',
+    0x4: '!BBQ8s8sB%ds',         # TCP Ack: id, timeout, size, MAC src, MAC dest, ackID, data
+    0x5: '!BBH8s8sB',            # TCP Fin: id, timeout, size, MAC src, MAC dest, finID -> If it is 0 then close connection and its ok, different of 0 is wrong and its tcp failed
 
 }
 
@@ -44,6 +45,10 @@ lora, s = config()
 
 # ----------------------------------
 
+buffer = []
+
+# ----------------------------------
+
 
 def parse_packet(packet, param=None):
     id = struct.unpack('!B', packet[:1])[0]
@@ -52,7 +57,7 @@ def parse_packet(packet, param=None):
         raise Exception('Unknown protocol: ' + id)
 
     if param:
-        size = struct.unpack('!Q', packet[1:9])[0] - HEADER_PROTOCOLS[id]
+        size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
         return list(struct.unpack(PROTOCOLS[id] % size, packet))
 
     return list(struct.unpack(PROTOCOLS[id], packet))
@@ -68,30 +73,44 @@ def compose_packet(data, param=None):
     return struct.pack(PROTOCOLS[data[0]], *data)
 
 
+def decrease_or_discard(buffer):
+    for packet in buffer:
+        packet[1] -= 1
+        if packet[1] <= 0:
+            buffer.remove(packet)
+    return buffer
+
+
+def exist_in_buffer(params):
+    # params = [(0,0),[2,src],(3,dest)]
+    exists = []
+    for packet in buffer:
+        for param in params:
+            if packet[param[0]] == param[1]:
+                exists.append(True)
+    
+    return True if len(exists) == len(params) else False
+
+
 def icmp_request(src, dest):
     if len(src) != 8 or len(dest) != 8:
         raise Exception('Invalid MAC address')
 
-    request = compose_packet([0x0, 16, src, dest])
-    timeout = time.time() + 5
+    packet = [0x0, 20, 16, src, dest]
+    buffer.append(packet)
+
+    request = compose_packet(packet)
     s.send(request)
-
-    while time.time() < timeout:
-        packet = s.recv(64)
-
-        if packet:
-            data = parse_packet(packet)
-            if data[0] == 0x1 and data[3] == src:
-                return data[2]
-
-    return None
 
 
 def icmp_reply(src, dest):
     if len(src) != 8 or len(dest) != 8:
         raise Exception('Invalid MAC address')
 
-    reply = compose_packet([0x1, 16, src, dest])
+    packet = [0x1, 20, 16, src, dest]
+    buffer.append(packet)
+
+    reply = compose_packet(packet)
     s.send(reply)
 
 
@@ -101,7 +120,7 @@ def tcp_syn(src, dest):
 
     synID = ord(os.urandom(1))
 
-    syn = compose_packet([0x2, 17, src, dest, synID])
+    syn = compose_packet([0x2, 20, 17, src, dest, synID])
     return syn
 
 
@@ -112,7 +131,7 @@ def tcp_synack(src, dest, synID):
     ackID = synID + 1                 # TCP Behaviour -> ackID = synID + 1
     synID = ord(os.urandom(1))
 
-    synack = compose_packet([0x3, 18, src, dest, synID, ackID])
+    synack = compose_packet([0x3, 20, 18, src, dest, synID, ackID])
     return synack
 
 
@@ -124,7 +143,9 @@ def tcp_ack(src, dest, synID, data):
     size = len(data)
 
     ack = compose_packet(
-        [0x4, size + HEADER_PROTOCOLS[0x4], src, dest, ackID, data], size)
+        [0x4, 20, size + HEADER_PROTOCOLS[0x4], src, dest, ackID, data],
+        size
+    )
     return ack
 
 
@@ -132,14 +153,12 @@ def tcp_fin(src, dest, finID):
     if len(src) != 8 or len(dest) != 8:
         raise Exception('Invalid MAC address')
 
-    fin = compose_packet([0x5, 17, src, dest, finID])
+    fin = compose_packet([0x5, 20, 17, src, dest, finID])
     return fin
 
 
 # ----------------------------------
 # Objects:
-
-
 
 
 # def icmp(id, src, dest):
