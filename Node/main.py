@@ -13,14 +13,16 @@ lora, s = config()
 mac = lora.mac()
 
 while True:
-    try:
-        packet = parse_packet(s.recv(64))
-    except Exception:
-        packet = parse_packet(s.recv(64),True)
+    packet = s.recv(64)
 
     if packet:
-        if packet[0] == 0x0 and not exist_in_buffer([(0,1),[3,mac],(4,packet[3])]):
-            _thread.start_new_thread(icmp_reply, (mac, packet[3],))
+        try:
+            data = parse_packet(packet)
+        except Exception:
+            data = parse_packet(packet, param=True)
+
+        if data[0] == 0x0 and not exist_in_buffer([(0,1),[3,mac],(4,data[3])]):
+            _thread.start_new_thread(icmp_reply, (mac, data[3],))
         
 
     buffer = decrease_or_discard(buffer)
