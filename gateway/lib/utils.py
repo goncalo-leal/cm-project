@@ -136,6 +136,50 @@ def tcp_fin(src, dest, finID):
     return fin
 
 
+def tcp_transmitter(src, dest, data):
+ 
+    syn = tcp_syn(src, dest)
+    s.send(syn) # sends syn packet
+    
+    timeout = time.time() + 5
+    hasSynAck = False # flag to check if synack is received
+
+    while time.time() < timeout:
+        packet = s.recv(64) # receives synack packet
+
+        if packet:
+            syn_ack = parse_packet(packet)
+            
+            # 0 must be id, 4 must be sin id and 5 must be syn id +1
+            if syn_ack[0] == 0x3 and syn_ack[1] == src and syn_ack[2] == dest and syn_ack[4] == 0x2 and syn_ack[5] == syn[4] + 1:
+                hasSynAck = True
+                break
+
+    if hasSynAck:
+        ack = tcp_ack(src, dest, syn_ack[4], data)
+        # if ack is syn +1
+        if ack[4] == syn_ack[4] + 1:
+            s.send(ack)
+      
+            timeout = time.time() + 5
+            hasFin = False
+
+            while time.time() < timeout:
+                packet = s.recv(64)
+
+                if packet:
+                    fin = parse_packet(packet)
+
+                    if fin[0] == 0x5 and fin[3] == src and fin[4] == dest:
+                        hasFin = True
+                        break
+
+
+            if hasFin:
+                return True
+
+    return False
+
 # ----------------------------------
 # Objects:
 
