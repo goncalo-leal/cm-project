@@ -15,6 +15,8 @@ PROTOCOLS = {
     0x3: '!BBH8s8sBB',
     0x4: '!BBQ8s8sB%ds',         # TCP Ack: id, timeout, size, MAC src, MAC dest, ackID, data
     0x5: '!BBH8s8sB',            # TCP Fin: id, timeout, size, MAC src, MAC dest, finID -> If it is 0 then close connection and its ok, different of 0 is wrong and its tcp failed
+    0x6: '!BBH8s8s',             # ARP Request: id, timeout, size, MAC src, MAC dest
+    0x7: '!BBH8s8s',             # ARP Response: id, timeout, size, MAC dst, MAC src
 
 }
 
@@ -81,7 +83,7 @@ def decrease_or_discard(buffer):
     return buffer
 
 
-def exist_in_buffer(params):
+def exist_in_buffer(params):    # Verifica se algum pacote com os parametros passados existe no buffer
     # params = [(0,0),[2,src],(3,dest)]
     exists = []
     for packet in buffer:
@@ -112,6 +114,28 @@ def icmp_reply(src, dest):
 
     reply = compose_packet(packet)
     s.send(reply)
+
+def arp_request(src):
+    if len(src) != 8:
+        raise Exception('Invalid MAC address')
+
+    packet = [0x6, 20, 16, src, b'\xff\xff\xff\xff\xff\xff\xff\xff']    # Broadcast
+    buffer.append(packet)
+
+    request = compose_packet(packet)
+    s.send(request)
+
+
+def arp_response(src, dest):
+    if len(src) != 8 or len(dest) != 8:
+        raise Exception('Invalid MAC address')
+
+    packet = [0x7, 20, 16, src, dest]
+    buffer.append(packet)
+
+    reply = compose_packet(packet)
+    s.send(reply)
+
 
 
 def tcp_syn(src, dest):

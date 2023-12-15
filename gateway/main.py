@@ -5,7 +5,7 @@ import socket
 import time
 import pycom
 # from lib.utils import parse_packet,compose_packet,icmp_request
-from utils import buffer,parse_packet, icmp_request, tcp_syn, tcp_ack, config,decrease_or_discard,exist_in_buffer
+from utils import buffer,parse_packet, icmp_request, tcp_syn, tcp_ack, config,decrease_or_discard,exist_in_buffer,arp_request
 import _thread
 
 # COM4
@@ -16,9 +16,15 @@ mac = lora.mac()
 
 known_nodes = [b'p\xb3\xd5I\x99x1_']
 active_nodes = []
-
+arp_timeout = 60
 
 while True:
+    # Scanning for new nodes
+    if arp_timeout == 60:
+        _thread.start_new_thread(arp_request, (mac,))
+        arp_timeout = 0
+    else:
+        arp_timeout += 1
 
     # Testing connectivity
     if len(active_nodes) != len(known_nodes):
@@ -36,6 +42,9 @@ while True:
 
         if data[0] == 0x1 and data[4] == mac and data[3] in known_nodes:
             active_nodes.append(data[3])
+        
+        elif data[0] == 0x7 and data[4] == mac:
+            known_nodes.append(data[3])
 
             
     print("Known nodes: ", known_nodes)
@@ -43,4 +52,4 @@ while True:
     print("Buffer: ", buffer)
     
     buffer = decrease_or_discard(buffer)
-    time.sleep(4)
+    time.sleep(1)
