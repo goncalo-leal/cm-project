@@ -1,11 +1,10 @@
 {
 	"folders": [
 		{
-			"name": "node",
-			"path": "node"
+			"path": "gateway"
 		},
 		{
-			"path": "gateway"
+			"path": "node"
 		}
 	]
 }
