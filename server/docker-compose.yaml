@@ -5,6 +5,13 @@ services:
     image: grafana/grafana-enterprise
     container_name: grafana
     restart: unless-stopped
+    build: 
+      context: grafana
+      dockerfile: Dockerfile
+      args:
+        - INFLUX_TOKEN=${INFLUX_TOKEN}
+    env_file:
+      - .env
     environment:
      - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
     ports:
@@ -24,6 +31,18 @@ services:
       - ./mosquitto:/etc/mosquitto
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
 
+  influxdb:
+    image: influxdb
+    container_name: influxdb
+    restart: unless-stopped
+    env_file:
+      - influxdb.env
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb:/var/lib/influxdb
+
 volumes:
   mqtt-broker-data: {}
   grafana-storage: {}
+  influxdb: {}
