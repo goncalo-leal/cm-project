@@ -2,6 +2,7 @@
 # from network import LoRa
 import network
 import socket
+import json
 import time
 import pycom
 # from lib.utils import parse_packet,compose_packet,icmp_request
@@ -39,7 +40,14 @@ while True:
     print("SYN:", parse_packet(syn))
     s.send(syn)
     timeout = time.time() + 5
-    message = "Hello World!"
+    message = {
+        "green": True,
+        "yellow": False,
+        "red": True
+        }   
+
+
+    json_message = json.dumps(message)
 
     hasSynAck = False
 
@@ -55,7 +63,7 @@ while True:
                 break
 
     if hasSynAck:
-        ack = tcp_ack(mac, known_nodes[0], syn_ack[4], message)
+        ack = tcp_ack(mac, known_nodes[0], syn_ack[4], json_message)
         s.send(ack)
         print('ACK: ', parse_packet(ack, True))
         timeout = time.time() + 5
