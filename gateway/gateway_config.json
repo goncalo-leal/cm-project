@@ -13,5 +13,6 @@
             "publish": "cm-project/gateway",
             "subscribe": "cm-project/server/#"
         }
-    }
+    },
+    "device_name": "gateway"
 }

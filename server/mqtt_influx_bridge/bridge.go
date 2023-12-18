@@ -34,7 +34,7 @@ type Config struct {
 type MQTTMessage struct {
 	Device 		string
 	Command 	string
-	Value 		int
+	Value 		float64
 }
 
 // influx_client is the InfluxDB client initialized in init()
@@ -131,6 +131,9 @@ func parseMessage(msg paho.Message) (MQTTMessage, error) {
 	// command: led_status
 	// value: 1/0
 
+	println(msg.Topic())
+	println(string(msg.Payload()))
+
 	// Split the topic into parts
 	topicParts := strings.Split(msg.Topic(), "/")
 	if len(topicParts) < 3 {
@@ -145,11 +148,40 @@ func parseMessage(msg paho.Message) (MQTTMessage, error) {
 	// Parse the command
 	command := topicParts[3]
 
-	// Parse the value to int
-	value, err := strconv.Atoi(string(msg.Payload()))
+	println("Command:", command)
+
+	// Parse the value
+	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
 	if err != nil {
+		fmt.Println("Error:", err)
 		return MQTTMessage{}, err
 	}
+
+	// value := 0.0
+	// err := error(nil)
+	// switch command {
+	// case "led_status":
+	// 	// Parse the value to int
+	// 	value, err = strconv.Atoi(string(msg.Payload()))
+	// 	if err != nil {
+	// 		return MQTTMessage{}, err
+	// 	}
+	
+	// case "rtt":
+	// 	// Parse the value to int
+	// 	value, err = strconv.Atoi(string(msg.Payload()))
+	// 	if err != nil {
+	// 		return MQTTMessage{}, err
+	// 	}
+
+	// case "throughput":
+	// 	// Convert string to float64
+	// 	value, err = strconv.ParseFloat(string(msg.Payload()), 64)
+	// 	if err != nil {
+	// 		fmt.Println("Error:", err)
+	// 		return MQTTMessage{}, err
+	// 	}
+	// }
 
 	// Return the parsed message
 	return MQTTMessage{
