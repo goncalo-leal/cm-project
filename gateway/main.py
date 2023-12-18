@@ -4,7 +4,7 @@ import network
 import socket
 import time
 # from lib.utils import parse_packet,compose_packet,icmp_request
-from lib.utils import buffer, parse_packet, icmp_request, tcp_syn, tcp_ack, config, decrease_or_discard, exist_in_buffer, arp_request,discard_tcp,discard_arp,discard_icmp
+from lib.utils import buffer, parse_packet, icmp_request, tcp_syn, tcp_ack, config, decrease_or_discard, exist_in_buffer, arp_request,discard_tcp,discard_arp,discard_icmp,log_message
 import _thread
 
 # COM4
@@ -12,11 +12,19 @@ import _thread
 lora, s = config()
 mac = lora.mac()
 
+# caracteristics of own device
+board = {
+    "name": "board1",
+    "mac": lora.mac(),
+}
+
+
 
 known_nodes = []
 active_nodes = []
 arp_timeout = 60
 keepalive = 30
+devices = {}
 
 message = {
     "device": "all",
@@ -24,11 +32,11 @@ message = {
 }
 
 while True:
-    print(time.localtime()[3:6], "\t> buffer:\t\t", buffer)
+    log_message("buffer",buffer)
 
     # Scanning for new nodes
     if arp_timeout == 60:
-        _thread.start_new_thread(arp_request, (mac,))
+        _thread.start_new_thread(arp_request, (mac,board["name"],))
         arp_timeout = 0
 
 
@@ -38,6 +46,8 @@ while True:
             if node not in active_nodes and not exist_in_buffer([(0, 0), (3, mac), (4, node)]):
                 _thread.start_new_thread(icmp_request, (mac, node,))
 
+
+    # FAZER ARRAY DE MENSAGENS PARA ENVIAR e SE ENVIADO REMOVER DO ARRAY
     # if there is a message send through tcp
     if message and len(active_nodes) > 0:
         if message["device"] == "all":
@@ -63,8 +73,8 @@ while True:
             # unpack the packet that received, with param, which means is a tcp packet
             data = parse_packet(packet, param=True)
         
-        print(time.localtime()[3:6], "\t> receiver:\t", data)
-
+        log_message("receiver",data)
+        
         # check if ICMP Reply is well done
         if data[0] == 0x1 and data[4] == mac and data[3] in known_nodes:
             active_nodes.append(data[3])
@@ -74,6 +84,8 @@ while True:
         # check if ARP Reply is well done
         elif data[0] == 0x7 and data[4] == mac:
             known_nodes.append(data[3])
+            devices[data[5]] = data[3]
+            print(devices)
             discard_arp(mac,data[3])
 
         elif data[0] == 0x3 and data[4] == mac and data[3] in active_nodes and not exist_in_buffer([(0, 0x4), (3, mac), (4, data[3]), (5, data[5]+1),(6,message["message"])]):
@@ -92,10 +104,10 @@ while True:
                 (0, 0x4), (3, data[4]), (4, data[3]), (5, data[5]-1)
             ])
             if ack:
-                print(time.localtime()[3:6], "\t> tcp session closed between", mac, "and", data[3])
+                log_message("tcp session closed",mac,data[3])
                 message = None
             else:
-                print(time.localtime()[3:6], "\t> tcp session closed between", mac, "and", data[3])
+                log_message("tcp session failed",mac,data[3])
             
             discard_tcp(mac,data[3])
 
@@ -105,7 +117,6 @@ while True:
     #print("Active nodes: ", active_nodes)
     #print("Buffer: ", len(buffer))
 
-    print("-----------------------------------------")
     decrease_or_discard(buffer)
     arp_timeout += 1
     keepalive += 1
