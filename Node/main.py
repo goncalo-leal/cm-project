@@ -17,6 +17,8 @@ board = {
     "mac": lora.mac(),
 }
 
+
+
 while True:
     log_message("buffer",buffer)
 

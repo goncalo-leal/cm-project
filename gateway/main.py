@@ -26,10 +26,16 @@ arp_timeout = 60
 keepalive = 30
 mac_to_devices = {}
 
-message = {
+messages = [{
     "device": "board14",
     "message": "Send Data",
-}
+},
+{
+    "device": "all",
+    "message": "HEY",
+}]
+
+next_message = None
 
 while True:
     log_message("buffer",buffer)
@@ -49,18 +55,21 @@ while True:
 
     # FAZER ARRAY DE MENSAGENS PARA ENVIAR e SE ENVIADO REMOVER DO ARRAY
     # if there is a message send through tcp
-    if message and len(active_nodes) > 0:
+    if next_message and len(active_nodes) > 0:
         devices_to_mac = {v: k for k, v in mac_to_devices.items()}        
-        if message["device"] == "all":
+        if next_message["device"] == "all":
             for node in active_nodes:
                 if not exist_in_buffer([(0, 0x2), (3, mac), (4, node)]):
                     _thread.start_new_thread(tcp_syn, (mac, node, ))
-
-        elif message["device"] in devices_to_mac.keys():
-            if not exist_in_buffer([(0, 0x2), (3, mac), (4, devices_to_mac[message["device"]])]):
+        elif next_message["device"] in devices_to_mac.keys():
+            if not exist_in_buffer([(0, 0x2), (3, mac), (4, devices_to_mac[next_message["device"]])]):
                 _thread.start_new_thread(
-                    tcp_syn, (mac, devices_to_mac[message["device"]], )
+                    tcp_syn, (mac, devices_to_mac[next_message["device"]], )
                 )
+    else:
+        if len(messages) > 0 and not next_message:
+            next_message = messages.pop(0)
+
             
 
     # receive packet
@@ -89,14 +98,14 @@ while True:
             mac_to_devices[data[3]] = data[5].decode('utf-8').rstrip('\x00')   # Unpack this to a string this is in bytes
             discard_arp(mac,data[3])
 
-        elif data[0] == 0x3 and data[4] == mac and data[3] in active_nodes and not exist_in_buffer([(0, 0x4), (3, mac), (4, data[3]), (5, data[5]+1),(6,message["message"])]):
+        elif data[0] == 0x3 and data[4] == mac and data[3] in active_nodes and not exist_in_buffer([(0, 0x4), (3, mac), (4, data[3]), (5, data[5]+1),(6,next_message["message"])]):
             # Check if ackID from TCP SynAck is synID from TCP Syn + 1
             syn = exist_in_buffer([
                 (0, 0x2), (3, mac), (4, data[3]), (5, data[6]-1)
             ])
             if syn:
                 _thread.start_new_thread(
-                    tcp_ack, (mac, data[3], data[5], message["message"],)
+                    tcp_ack, (mac, data[3], data[5], next_message["message"],)
                 )
 
         elif data[0] == 0x5 and data[4] == mac and data[3] in active_nodes:
@@ -106,17 +115,13 @@ while True:
             ])
             if ack:
                 log_message("tcp session closed",mac,data[3])
-                message = None
+                next_message = None
             else:
                 log_message("tcp session failed",mac,data[3])
             
             discard_tcp(mac,data[3])
-
-        # NECESSARIO REMOVER OS PACOTES COM SUCESSO OU FAIL DO BUFFER
-
-    #print("\nKnown nodes: ", known_nodes)
-    #print("Active nodes: ", active_nodes)
-    #print("Buffer: ", len(buffer))
+    
+    
 
     decrease_or_discard(buffer)
     arp_timeout += 1
