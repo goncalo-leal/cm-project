@@ -53,7 +53,7 @@ buffer = []
 
 # format of log message with time and packet information
 def log_message(message,arg1=None,arg2=None):
-    log = "{}:{}:{} >\t{}".format(
+    log = "{}:{}:{}\t>\t{}".format(
         time.localtime()[3],
         time.localtime()[4],
         time.localtime()[5],
@@ -269,5 +269,4 @@ def discard_icmp(src, dest):     # Discard all ICMP packets from src to dest
         [(0,0x0),(3,src),(4,dest)],
         [(0,0x1),(3,src),(4,dest)],
         ])
-    
     

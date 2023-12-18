@@ -24,10 +24,10 @@ known_nodes = []
 active_nodes = []
 arp_timeout = 60
 keepalive = 30
-devices = {}
+mac_to_devices = {}
 
 message = {
-    "device": "all",
+    "device": "board14",
     "message": "Send Data",
 }
 
@@ -50,14 +50,16 @@ while True:
     # FAZER ARRAY DE MENSAGENS PARA ENVIAR e SE ENVIADO REMOVER DO ARRAY
     # if there is a message send through tcp
     if message and len(active_nodes) > 0:
+        devices_to_mac = {v: k for k, v in mac_to_devices.items()}        
         if message["device"] == "all":
             for node in active_nodes:
                 if not exist_in_buffer([(0, 0x2), (3, mac), (4, node)]):
                     _thread.start_new_thread(tcp_syn, (mac, node, ))
-        elif message["device"] in active_nodes:
-            if not exist_in_buffer([(0, 0x2), (3, mac), (4, message["device"])]):
+
+        elif message["device"] in devices_to_mac.keys():
+            if not exist_in_buffer([(0, 0x2), (3, mac), (4, devices_to_mac[message["device"]])]):
                 _thread.start_new_thread(
-                    tcp_syn, (mac, message["device"], )
+                    tcp_syn, (mac, devices_to_mac[message["device"]], )
                 )
             
 
@@ -84,8 +86,7 @@ while True:
         # check if ARP Reply is well done
         elif data[0] == 0x7 and data[4] == mac:
             known_nodes.append(data[3])
-            devices[data[5]] = data[3]
-            print(devices)
+            mac_to_devices[data[3]] = data[5].decode('utf-8').rstrip('\x00')   # Unpack this to a string this is in bytes
             discard_arp(mac,data[3])
 
         elif data[0] == 0x3 and data[4] == mac and data[3] in active_nodes and not exist_in_buffer([(0, 0x4), (3, mac), (4, data[3]), (5, data[5]+1),(6,message["message"])]):

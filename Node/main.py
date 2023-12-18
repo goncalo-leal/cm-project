@@ -34,7 +34,7 @@ while True:
             _thread.start_new_thread(icmp_reply, (mac, data[3],))
 
         elif data[0] == 0x6 and not exist_in_buffer([(0,0x7),[3,mac],(4,data[3])]):
-            _thread.start_new_thread(arp_response, (mac, data[3],board["name"]))
+            _thread.start_new_thread(arp_response, (mac, data[3],board["name"],))
         
         elif data[0] == 0x2 and data[4] == mac and not exist_in_buffer([(0,3),(3,mac),(4,data[3]),(6,(data[5]+1))]):
             _thread.start_new_thread(tcp_synack, (mac, data[3],data[5],))
