@@ -8,15 +8,15 @@ import os
 # ----------------------------------
 # https://docs.python.org/3/library/struct.html
 PROTOCOLS = {
-    0x0: '!BBH8s8s8s',             # ICMP Request: id, timeout, size, MAC src, MAC dest, deviceName
-    0x1: '!BBH8s8s8s',             # ICMP Reply: id, timeout, size, MAC dst, MAC src,deviceName
+    0x0: '!BBH8s8s',             # ICMP Request: id, timeout, size, MAC src, MAC dest
+    0x1: '!BBH8s8s',             # ICMP Reply: id, timeout, size, MAC dst, MAC src
     0x2: '!BBH8s8sB',            # TCP Syn: id, timeout, size, MAC src, MAC dest, synID
     # TCP SynAck: id, timeout, size, MAC src, MAC dest, synID, ackID
     0x3: '!BBH8s8sBB',
     0x4: '!BBQ8s8sB%ds',         # TCP Ack: id, timeout, size, MAC src, MAC dest, ackID, data
     0x5: '!BBH8s8sB',            # TCP Fin: id, timeout, size, MAC src, MAC dest, finID -> If it is ackID + 1 from ACK then close connection and its ok, if it's different then it's wrong and its tcp failed
-    0x6: '!BBH8s8s',             # ARP Request: id, timeout, size, MAC src, MAC dest
-    0x7: '!BBH8s8s',             # ARP Response: id, timeout, size, MAC dst, MAC src
+    0x6: '!BBH8s8s8s',             # ARP Request: id, timeout, size, MAC src, MAC dest
+    0x7: '!BBH8s8s8s',             # ARP Response: id, timeout, size, MAC dst, MAC src
 
 }
 
