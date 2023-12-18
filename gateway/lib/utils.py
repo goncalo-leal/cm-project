@@ -29,6 +29,19 @@ HEADER_PROTOCOLS = {
     0x5: 17,
 }
 
+
+COLORS = {
+    "red": 0xff0000,
+    "orange": 0xffa500,
+    "yellow": 0xffff00,
+    "green": 0x00ff00,
+    "cyan": 0x00ffff,
+    "blue": 0x0000ff,
+    "purple": 0x800080,
+    "white": 0xffffff,
+}
+
+
 # ----------------------------------
 
 

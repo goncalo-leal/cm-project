@@ -2,7 +2,7 @@ import network
 import socket
 import time
 #import pycom
-from lib.utils import buffer,parse_packet, icmp_reply, tcp_syn, tcp_ack, config,decrease_or_discard,exist_in_buffer,arp_response,tcp_synack,tcp_fin,HEADER_PROTOCOLS,log_message
+from lib.utils import buffer,parse_packet, icmp_reply, tcp_syn, tcp_ack, config,decrease_or_discard,exist_in_buffer,arp_response,tcp_synack,tcp_fin,HEADER_PROTOCOLS,log_message,COLORS
 import _thread
 
 # COM6
@@ -15,8 +15,9 @@ mac = lora.mac()
 board = {
     "name": "board14",
     "mac": lora.mac(),
+    "status": 1,
+    "color": "red",
 }
-
 
 
 while True:
@@ -45,11 +46,16 @@ while True:
             # Check if the size and the message are the same
             if len(data[6]) == (data[2] - HEADER_PROTOCOLS[0x4]):
                 _thread.start_new_thread(tcp_fin, (mac, data[3],data[5],))    
-                log_message(data[6])
+                message = data[6].split("|")
+                if message[0] == "status" and (message[1] == "0" or message[1] == "1"):
+                    board["status"] = int(message[1])
+                elif message[0] == "color" and message[1] in COLORS.keys():
+                    board["color"] = message[1]
+
             else:
                 _thread.start_new_thread(tcp_fin, (mac, data[3],0,))    
             
         
-
+    print("BOARD:\t",board)
     decrease_or_discard(buffer)
     time.sleep(1)
