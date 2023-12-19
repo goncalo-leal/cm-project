@@ -112,11 +112,14 @@ def compose_packet(data, param=None):
 
 
 # decreses timeout of each packet in buffer and discard if timeout is 0
-def decrease_or_discard(buffer):
+def decrease_or_discard(buffer, packet_loss):
     for packet in buffer:
         packet[1] -= 1
         if packet[1] <= 0:
+            packet_loss += 1
             buffer.remove(packet)
+    
+    return packet_loss
 
 
 # check if a packet with the same params exists in buffer, and return it

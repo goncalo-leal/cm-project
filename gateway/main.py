@@ -19,7 +19,7 @@ board = {
     "mac": lora.mac(),
 }
 
-
+packet_loss = 0
 
 known_nodes = []
 active_nodes = []
@@ -144,8 +144,7 @@ while True:
             discard_tcp(mac,data[3])
     
     
-
-    decrease_or_discard(buffer)
+    packet_loss = decrease_or_discard(buffer, packet_loss)
     arp_timeout += 1
     keepalive += 1
     time.sleep(1)
