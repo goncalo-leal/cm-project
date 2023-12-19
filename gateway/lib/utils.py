@@ -159,7 +159,7 @@ def icmp_reply(src, dest):
         raise Exception('Invalid MAC address')
 
     packet = [0x1, 20, 16, src, dest]
-    buffer.append(packet)
+    #buffer.append(packet)
 
     reply = compose_packet(packet)
     s.send(reply)
@@ -184,7 +184,7 @@ def arp_response(src, dest,deviceName):
         raise Exception('Invalid MAC address')
 
     packet = [0x7, 20, 16, src, dest,deviceName]
-    buffer.append(packet)
+    #buffer.append(packet)
 
     reply = compose_packet(packet)
     s.send(reply)

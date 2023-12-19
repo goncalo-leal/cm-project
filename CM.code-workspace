@@ -1,9 +1,11 @@
 {
 	"folders": [
 		{
+			"name": "gateway",
 			"path": "gateway"
 		},
 		{
+			"name": "node",
 			"path": "node"
 		}
 	]
