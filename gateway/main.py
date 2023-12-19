@@ -37,10 +37,11 @@ messages = [{
 }]
 
 next_message = None
+packet_loss = 0
 
 info = None
 while True:
-    #log_message("buffer",buffer)
+    log_message("buffer",buffer)
 
     # Scanning for new nodes
     if arp_timeout == 60:
@@ -74,10 +75,12 @@ while True:
             
 
     # receive packet
-    packet = s.recv(64)
+    packet = s.recv(128)
 
     # check if packet is not empty
     if packet:
+        print("packet:  ",packet)
+
         try:
             # unpack the packet that received
             data = parse_packet(packet)
