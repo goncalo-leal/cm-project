@@ -100,7 +100,13 @@ def parse_packet(packet, param=None):
         return []
 
     if param:
+        # size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
+        # return list(struct.unpack(PROTOCOLS[id] % size, packet))
         size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
+        expected_size = struct.calcsize(PROTOCOLS[id] % size)
+        if len(packet) < expected_size:
+            log_message("ERROR: ", "Packet size is smaller than expected.")
+            return []
         return list(struct.unpack(PROTOCOLS[id] % size, packet))
 
     return list(struct.unpack(PROTOCOLS[id], packet))

@@ -100,6 +100,7 @@ while True:
                         board["status"] = 1
                     board["color"] = message[1]
                     pycom.rgbled(utils.COLORS[board["color"]])
+                info_interval = 10 # this will force the sending of a status update
             else:
                 utils.log_message("tcp ack failed", board["mac"], data[3])
                 # _thread.start_new_thread(utils.tcp_fin, (board["mac"], data[3], 0, lora_socket))

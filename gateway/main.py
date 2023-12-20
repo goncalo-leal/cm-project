@@ -199,12 +199,16 @@ while True:
                 utils.tcp_fin(
                     board["mac"], data[3], data[5], lora_socket
                 )
-                info = data[6]
+                info = json.loads(data[6])
                 print("---------------------------------")
-                print("INFO: ", json.loads(info))
+                print("INFO: ", info)
                 print("---------------------------------")
                 # utils.log_message("tcp fin", json.loads(info))
                 # TODO: send status to broker
+                # {'color': 'cyan', 'status': 1, 'name': 'board14'}
+                mqtt_client.publish(topic=conf["mqtt"]["topics"]["publish"] + '/' + mac_to_devices[data[3]] + '/led_status', msg=str(info['status']))
+                mqtt_client.publish(topic=conf["mqtt"]["topics"]["publish"] + '/' + mac_to_devices[data[3]] + '/color', msg=str(info['color']))
+
             else:
                 # utils.log_message("tcp fin failed", data[6])
                 # send a fin packet with the wrong id so the node resends the packet

@@ -12,8 +12,8 @@ services:
         - INFLUX_TOKEN=${INFLUX_TOKEN}
     env_file:
       - .env
-    environment:
-     - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
+    # environment:
+    #  - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
     ports:
      - '3000:3000'
     volumes:
@@ -42,17 +42,17 @@ services:
     volumes:
       - influxdb:/var/lib/influxdb
   
-  mqtt-influxdb-bridge:
-    build: 
-      context: mqtt_influx_bridge
-      dockerfile: Dockerfile
-    env_file:
-      - .env
-    container_name: mqtt-influxdb-bridge
-    restart: unless-stopped
-    depends_on:
-      - mosquitto
-      - influxdb
+  # mqtt-influxdb-bridge:
+  #   build: 
+  #     context: mqtt_influx_bridge
+  #     dockerfile: Dockerfile
+  #   env_file:
+  #     - .env
+  #   container_name: mqtt-influxdb-bridge
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - mosquitto
+  #     - influxdb
 
 volumes:
   mqtt-broker-data: {}

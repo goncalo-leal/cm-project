@@ -143,6 +143,7 @@ buffer = []
 def parse_packet(packet, param=None):
     print("PACKET: ", packet)
     id = struct.unpack('!B', packet[:1])[0]
+    print(id)
 
     if id not in PROTOCOLS:
         # raise Exception('Unknown protocol: ', id)
@@ -150,6 +151,10 @@ def parse_packet(packet, param=None):
 
     if param:
         size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
+        expected_size = struct.calcsize(PROTOCOLS[id] % size)
+        if len(packet) < expected_size:
+            log_message("ERROR: ", "Packet size is smaller than expected.")
+            return []
         return list(struct.unpack(PROTOCOLS[id] % size, packet))
 
     return list(struct.unpack(PROTOCOLS[id], packet))

@@ -34,7 +34,7 @@ type Config struct {
 type MQTTMessage struct {
 	Device 		string
 	Command 	string
-	Value 		float64
+	Value 		interface{}
 }
 
 // influx_client is the InfluxDB client initialized in init()
@@ -151,37 +151,43 @@ func parseMessage(msg paho.Message) (MQTTMessage, error) {
 	println("Command:", command)
 
 	// Parse the value
-	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return MQTTMessage{}, err
-	}
-
-	// value := 0.0
-	// err := error(nil)
-	// switch command {
-	// case "led_status":
-	// 	// Parse the value to int
-	// 	value, err = strconv.Atoi(string(msg.Payload()))
-	// 	if err != nil {
-	// 		return MQTTMessage{}, err
-	// 	}
-	
-	// case "rtt":
-	// 	// Parse the value to int
-	// 	value, err = strconv.Atoi(string(msg.Payload()))
-	// 	if err != nil {
-	// 		return MQTTMessage{}, err
-	// 	}
-
-	// case "throughput":
-	// 	// Convert string to float64
-	// 	value, err = strconv.ParseFloat(string(msg.Payload()), 64)
-	// 	if err != nil {
-	// 		fmt.Println("Error:", err)
-	// 		return MQTTMessage{}, err
-	// 	}
+	// value, err := strconv.ParseFloat(string(msg.Payload()), 64)
+	// if err != nil {
+	// 	fmt.Println("Error:", err)
+	// 	return MQTTMessage{}, err
 	// }
+
+	value := 0.0
+	err := error(nil)
+	switch command {
+	case "led_status":
+		// Parse the value to int
+		value, err = strconv.ParseFloat(string(msg.Payload()), 64)
+		if err != nil {
+			return MQTTMessage{}, err
+		}
+	
+	case "rtt":
+		// Parse the value to int
+		value, err = strconv.ParseFloat(string(msg.Payload()), 64)
+		if err != nil {
+			return MQTTMessage{}, err
+		}
+
+	case "throughput":
+		// Convert string to float64
+		value, err = strconv.ParseFloat(string(msg.Payload()), 64)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return MQTTMessage{}, err
+		}
+	case "color":
+		return MQTTMessage{
+			Device: device,
+			Command: command,
+			Value: string(msg.Payload()),
+		}, nil
+	}
 
 	// Return the parsed message
 	return MQTTMessage{
@@ -214,8 +220,8 @@ func writeMessage(influx_client influxdb.Client, mqttMessage MQTTMessage) error 
 
 	// Create a new point
 	p:= influxdb.NewPoint(
-		config.InfluxMeasurement,
-		map[string]string{"device": mqttMessage.Device, "command": mqttMessage.Command},
+		mqttMessage.Command,
+		map[string]string{"device": mqttMessage.Device}, //, "command": mqttMessage.Command},
 		map[string]interface{}{"value": mqttMessage.Value},
 		time.Now(),
 	)
