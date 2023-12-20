@@ -29,11 +29,11 @@ def sub_cb(topic, msg):
         "message": message + '|' + message_value
     }
 
-    print(message_to_send)
+    # print(message_to_send)
 
     # Add the message to the messages list in first position
     messages.append(message_to_send)
-    print(messages)
+    # print(messages)
 
 pycom.heartbeat(False)
 
@@ -64,8 +64,8 @@ mqtt_client = utils.get_mqtt_client(conf["mqtt"], sub_cb)
 mqtt_client.set_callback(sub_cb)
 mqtt_client.subscribe(topic=conf["mqtt"]["topics"]["subscribe"])
 
-known_nodes = []
-active_nodes = []
+known_nodes = set()
+active_nodes = set()
 mac_to_devices = {}
 arp_timeout = 60
 keepalive = 30
@@ -73,43 +73,23 @@ packet_loss = 0
 
 messages = [
     {
-        "device": "board14",
+        "device": "all",
         "message": "color|cyan",
     },
     {
-        "device": "board05",
-        "message": "color|cyan",
-    },
-    {
-        "device": "board14",
+        "device": "all",
         "message": "color|green",
     },
     {
-        "device": "board05",
-        "message": "color|green",
-    },
-    {
-        "device": "board14",
+        "device": "all",
         "message": "color|purple",
     },
     {
-        "device": "board05",
-        "message": "color|purple",
-    },
-    {
-        "device": "board14",
+        "device": "all",
         "message": "color|white",
     },
     {
-        "device": "board05",
-        "message": "color|white",
-    },
-    {
-        "device": "board14",
-        "message": "status|0",
-    },
-    {
-        "device": "board05",
+        "device": "all",
         "message": "status|0",
     }
 ]
@@ -121,6 +101,10 @@ while True:
     pycom.rgbled(0x00ff00)
     # utils.log_message("buffer", utils.get_buffer())
 
+    print("NEXT: ", next_message)
+
+    print("ACTIVE: ", active_nodes)
+
     # Scanning for new nodes
     if arp_timeout == 60:
         # _thread.start_new_thread(utils.arp_request, (board["mac"], board["name"], lora_socket))
@@ -129,20 +113,21 @@ while True:
         )
         arp_timeout = 0
 
-    print("MESSAGES: ", messages)
+    # print("MESSAGES: ", messages)
 
     # Testing connectivity
-    if len(active_nodes) != len(known_nodes):
+    if keepalive == 30:
+        keepalive = 0
         for node in known_nodes:
-            if node not in active_nodes and not utils.exist_in_buffer([(0,0),[3, board["mac"]],(4,node)]):
+            if not utils.exist_in_buffer([(0,0),[3, board["mac"]],(4,node)]):
                 # _thread.start_new_thread(utils.icmp_request, (board["mac"], node, lora_socket))
                 utils.icmp_request(
                     board["mac"], node, lora_socket
                 )
     
     # if there is a message send through tcp
+    devices_to_mac = {v: k for k, v in mac_to_devices.items()}
     if next_message and len(active_nodes) > 0:
-        devices_to_mac = {v: k for k, v in mac_to_devices.items()}
         if next_message["device"] == "all":
             # send to all active nodes
             for node in active_nodes:
@@ -159,11 +144,12 @@ while True:
                     board["mac"], devices_to_mac[next_message["device"]], lora_socket
                 )
 
-    elif len(messages) > 0 and not next_message:
+    elif len(messages) > 0 and not next_message and len(active_nodes) > 0:
         # get next message
         next_message = messages.pop(0)
+        print("MESSAGES",len(messages))
         # TODO: delete this DEMO ONLY
-        messages.append(next_message)
+        #messages.append(next_message)
 
     # Receive LoRa packets
     packet = lora_socket.recv(100)
@@ -185,12 +171,12 @@ while True:
 
         # check if ICMP Reply is correct
         if data[0] == 0x1 and data[4] == board["mac"] and data[3] in known_nodes:
-            active_nodes.append(data[3])
+            active_nodes.add(data[3])
             utils.discard_icmp(board["mac"], data[3])
         
         # check if ARP Reply is correct
         elif data[0] == 0x7 and data[4] == board["mac"]:
-            known_nodes.append(data[3])
+            known_nodes.add(data[3])
             mac_to_devices[data[3]] = data[5].decode('utf-8').rstrip('\x00')  # Unpack this to a string this is in bytes
             utils.discard_arp(board["mac"], data[3])
 
@@ -281,7 +267,7 @@ while True:
 
             utils.discard_tcp(board["mac"], data[3])
 
-    packet_loss = utils.decrease_or_discard(packet_loss)
+    packet_loss,active_nodes= utils.decrease_or_discard(packet_loss,active_nodes)
     arp_timeout += 1
     keepalive += 1
 

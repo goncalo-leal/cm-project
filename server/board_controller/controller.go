@@ -93,12 +93,13 @@ func main() {
 
 		// display the list of devices
 		fmt.Println("Devices:")
+		fmt.Println("0: All")
 		for i, device := range devices {
 			fmt.Printf("%d: %s\n", i+1, device)
 		}
 
 		// print the exit option
-		fmt.Printf("%d: Exit\n", 0)
+		fmt.Printf("%d: Exit\n", 9)
 
 		// ask the user to select a device
 		fmt.Print("Select an option: ")
@@ -106,7 +107,7 @@ func main() {
 		fmt.Scanln(&device)
 
 		// check if the user wants to exit
-		if device == 0 {
+		if device == 9 {
 			return
 		}
 
@@ -120,10 +121,17 @@ func main() {
 		var command int
 		fmt.Scanln(&command)
 
-		// send the command to the device
-		err = sendCommand(devices[device-1], command)
-		if err != nil {
-			log.Fatal(err)
+		if device == 0 {
+			err = sendCommand("all", command)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			// send the command to the device
+			err = sendCommand(devices[device-1], command)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		fmt.Println("Command sent")

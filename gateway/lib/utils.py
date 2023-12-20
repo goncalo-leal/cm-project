@@ -146,6 +146,7 @@ def parse_packet(packet, param=None):
     print("PACKET: ", packet)
     id = struct.unpack('!B', packet[:1])[0]
     print(id)
+    print(param)
 
     if id not in PROTOCOLS:
         # raise Exception('Unknown protocol: ', id)
@@ -176,7 +177,7 @@ def get_buffer():
     return buffer
 
 # decreses timeout of each packet in buffer and discard if timeout is 0
-def decrease_or_discard(packet_loss):
+def decrease_or_discard(packet_loss,active_nodes):
     # Alterei esta função porque o main não deve 
     # ter capacidade de alterar o buffer
 
@@ -184,8 +185,10 @@ def decrease_or_discard(packet_loss):
         packet[1] -= 1
         if packet[1] <= 0:
             packet_loss += 1
+            if packet[0] == 0x0 and packet[4] in active_nodes:
+                active_nodes.discard(packet[4])
             buffer.remove(packet)
-    return packet_loss
+    return packet_loss,active_nodes
 
 # check if a packet with the same params exists in buffer, and return it
 def exist_in_buffer(params):
@@ -267,7 +270,7 @@ def tcp_syn(src, dest, s):
 
     synID = ord(os.urandom(1))
 
-    packet = [0x2, 20, 17, src, dest, synID]
+    packet = [0x2, 10, 17, src, dest, synID]
     buffer.append(packet + [time.time()])
 
     syn = compose_packet(packet)
@@ -282,7 +285,7 @@ def tcp_synack(src, dest, synID, s):
     ackID = synID + 1                 # TCP Behaviour -> ackID = synID + 1
     synID = ord(os.urandom(1))
 
-    packet = [0x3, 20, 18, src, dest, synID, ackID]
+    packet = [0x3, 10, 18, src, dest, synID, ackID]
     buffer.append(packet + [time.time()])
 
     synack = compose_packet(packet)
@@ -297,7 +300,7 @@ def tcp_ack(src, dest, synID, data, s):
     ackID = synID + 1                   # TCP Behaviour -> ackID = synID + 1
     size = len(data)
 
-    packet = [0x4, 20, size + HEADER_PROTOCOLS[0x4], src, dest, ackID, data]
+    packet = [0x4, 10, size + HEADER_PROTOCOLS[0x4], src, dest, ackID, data]
     buffer.append(packet + [time.time()])
 
     ack = compose_packet(
@@ -313,7 +316,7 @@ def tcp_fin(src, dest, ackID, s):
 
     finID = ackID + 1
 
-    packet = [0x5, 20, 17, src, dest, finID]
+    packet = [0x5, 10, 17, src, dest, finID]
     buffer.append(packet + [time.time()])
 
     fin = compose_packet(packet)

@@ -41,6 +41,7 @@ type MQTTMessage struct {
 var influx_client influxdb.Client
 
 var config Config
+var lora_config = "250_12"
 
 func init() {
 	// Read the configuration from the environment
@@ -213,7 +214,7 @@ func writeMessage(influx_client influxdb.Client, mqttMessage MQTTMessage) error 
 	// Create a new point
 	p:= influxdb.NewPoint(
 		mqttMessage.Command,
-		map[string]string{"device": mqttMessage.Device}, //, "command": mqttMessage.Command},
+		map[string]string{"device": mqttMessage.Device, "config": lora_config}, //, "command": mqttMessage.Command},
 		map[string]interface{}{"value": mqttMessage.Value},
 		time.Now(),
 	)
