@@ -5,18 +5,35 @@ import json
 import _thread
 
 def sub_cb(topic, msg):
-   # This callback is called when a message is received
+    # This callback is called when a mqtt message is received
+    print(topic)
+    print(msg)
 
-   # esta função deve ficar na main, porque faz parte da lógica de negócio
-   # e não da lógica de comunicação
+    # Topic is something like: cm-project/controller/device_name/{led_status, color}
+    # msg is something like: 0 or 1 or cyan or green or purple or white...
 
-   # algumas mensagens mqtt devem ter impacto no comportamento do gateway ou dos nodes
-   print(topic)
-   print(msg)
+    topic = topic.decode('utf-8')
 
-   # TODO: send message to the node to change its status
-   # TODO: interface (cli) to send commands to nodes
+    # Get the device name from the topic
+    device_name = topic.split('/')[2]
 
+    # Get the message from the topic
+    message = topic.split('/')[3]
+
+    # Get the message value from the msg
+    message_value = msg.decode('utf-8')
+
+    # Create the message to send to the node
+    message_to_send = {
+        "device": device_name,
+        "message": message + '|' + message_value
+    }
+
+    print(message_to_send)
+
+    # Add the message to the messages list in first position
+    messages.append(message_to_send)
+    print(messages)
 
 pycom.heartbeat(False)
 
@@ -44,6 +61,7 @@ if "mqtt" not in conf:
     exit(1)
 
 mqtt_client = utils.get_mqtt_client(conf["mqtt"], sub_cb)
+mqtt_client.set_callback(sub_cb)
 mqtt_client.subscribe(topic=conf["mqtt"]["topics"]["subscribe"])
 
 known_nodes = []
@@ -91,6 +109,8 @@ while True:
         )
         arp_timeout = 0
 
+    print("MESSAGES: ", messages)
+
     # Testing connectivity
     if len(active_nodes) != len(known_nodes):
         for node in known_nodes:
@@ -123,7 +143,7 @@ while True:
         # get next message
         next_message = messages.pop(0)
         # TODO: delete this DEMO ONLY
-        messages.append(next_message)
+        # messages.append(next_message)
 
     # Receive LoRa packets
     packet = lora_socket.recv(100)
@@ -162,7 +182,7 @@ while True:
             )
         
         # ack
-        elif data[0] == 0x3 and data[4] == board["mac"] and data[3] in active_nodes and not utils.exist_in_buffer([(0, 0x4), (3, board["mac"]), (4, data[3]), (5, data[5]+1),(6, next_message["message"])]):
+        elif data[0] == 0x3 and data[4] == board["mac"] and data[3] in active_nodes and next_message and not utils.exist_in_buffer([(0, 0x4), (3, board["mac"]), (4, data[3]), (5, data[5]+1),(6, next_message["message"])]):
             # Check if ackID from TCP SynAck is synID from TCP Syn + 1
             syn = utils.exist_in_buffer([
                 (0, 0x2), (3, board["mac"]), (4, data[3]), (5, data[6]-1)
@@ -192,7 +212,7 @@ while True:
                 mqtt_client.publish(topic=conf["mqtt"]["topics"]["publish"] + '/' + mac_to_devices[data[3]] + '/throughput', msg=str(throughput))
 
         # fin
-        elif data[0] == 0x4 and data[4] == board["mac"] and not utils.exist_in_buffer([(0, 5), (3, board["mac"]), (4, data[3]), (5, (data[5]+1))]):
+        elif data[0] == 0x4 and data[4] == board["mac"] and data[3] in active_nodes and not utils.exist_in_buffer([(0, 5), (3, board["mac"]), (4, data[3]), (5, (data[5]+1))]):
             # Check if the size and the message are the same
             if len(data[6]) == (data[2] - utils.HEADER_PROTOCOLS[0x4]):
                 # _thread.start_new_thread(utils.tcp_fin, (board["mac"], data[3], data[5], lora_socket))
@@ -268,7 +288,10 @@ while True:
         time.sleep(5)
 
         mqtt_client = utils.get_mqtt_client(conf["mqtt"], sub_cb)
+        mqtt_client.set_callback(sub_cb)
         mqtt_client.subscribe(topic=conf["mqtt"]["topics"]["subscribe"])
+    
+    mqtt_client.check_msg()
 
     pycom.rgbled(0xff00ff)
 

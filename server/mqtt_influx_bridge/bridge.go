@@ -54,14 +54,6 @@ func init() {
 	fmt.Println("INFLUXDB_HOST:", config.InfluxDBHost)
 	fmt.Println("INFLUXDB_NAME:", config.InfluxDBName)
 	fmt.Println("INFLUXDB_USER:", config.InfluxDBUser)
-
-	// Create database if it does not exist
-    // _, err = queryDB(
-	// 	influx_client, fmt.Sprintf("CREATE DATABASE %s", config.InfluxDBName),
-	// )
-    // if err != nil {
-    //     log.Fatal(err)
-    // }
 }
 
 func main() {
@@ -234,17 +226,3 @@ func writeMessage(influx_client influxdb.Client, mqttMessage MQTTMessage) error 
 
 	return nil
 }
-
-// func queryDB(clnt influxdb.Client, cmd string) (res []influxdb.Result, err error) {
-// 	q := influxdb.Query{
-// 		Command:  cmd,
-// 		Database: config.InfluxDBName,
-// 	}
-// 	if response, err := clnt.Query(q); err == nil {
-// 		if response.Error() != nil {
-// 			return res, response.Error()
-// 		}
-// 		res = response.Results
-// 	}
-// 	return res, nil
-// }

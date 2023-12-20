@@ -115,6 +115,8 @@ def get_lora_socket() -> (LoRa, socket.socket):
     lora_socket = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
     lora_socket.setblocking(False)
 
+    log_message("Lora status", lora.stats())
+
     return lora, lora_socket
 
 # ----------------------------------
@@ -127,7 +129,7 @@ def get_mqtt_client(mqtt_config: dict, sub_cb: function) -> MQTTClient:
         port=mqtt_config["port"]
     )
     # the callback is called when a message is received
-    mqtt_client.set_callback(sub_cb)
+    # mqtt_client.set_callback(sub_cb)
     mqtt_client.connect()
     return mqtt_client
 

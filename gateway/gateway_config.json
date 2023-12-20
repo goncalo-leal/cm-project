@@ -11,7 +11,7 @@
         "port": 1883,
         "topics": {
             "publish": "cm-project/gateway",
-            "subscribe": "cm-project/server/#"
+            "subscribe": "cm-project/controller/#"
         }
     },
     "device_name": "gateway"
