@@ -77,7 +77,15 @@ messages = [
         "message": "color|cyan",
     },
     {
+        "device": "board05",
+        "message": "color|cyan",
+    },
+    {
         "device": "board14",
+        "message": "color|green",
+    },
+    {
+        "device": "board05",
         "message": "color|green",
     },
     {
@@ -85,11 +93,23 @@ messages = [
         "message": "color|purple",
     },
     {
+        "device": "board05",
+        "message": "color|purple",
+    },
+    {
         "device": "board14",
         "message": "color|white",
     },
     {
-        "device": "all",
+        "device": "board05",
+        "message": "color|white",
+    },
+    {
+        "device": "board14",
+        "message": "status|0",
+    },
+    {
+        "device": "board05",
         "message": "status|0",
     }
 ]
@@ -143,7 +163,7 @@ while True:
         # get next message
         next_message = messages.pop(0)
         # TODO: delete this DEMO ONLY
-        # messages.append(next_message)
+        messages.append(next_message)
 
     # Receive LoRa packets
     packet = lora_socket.recv(100)

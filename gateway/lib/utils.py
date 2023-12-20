@@ -109,7 +109,7 @@ def get_lora_socket() -> (LoRa, socket.socket):
     # TODO: we should be able to change the frequency and the bandwidth
     
     # Lora config:
-    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868)
+    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, tx_power=11, bandwidth=LoRa.BW_125KHZ, sf=8)
 
     # Socket config:
     lora_socket = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
