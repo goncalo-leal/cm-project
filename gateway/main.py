@@ -26,6 +26,7 @@ active_nodes = []
 arp_timeout = 60
 keepalive = 30
 mac_to_devices = {}
+packet_loss = 0
 
 messages = [{
     "device": "board14",
@@ -145,7 +146,7 @@ while True:
     
     
 
-    decrease_or_discard(buffer)
+    packet_loss = decrease_or_discard(buffer,packet_loss)
     arp_timeout += 1
     keepalive += 1
     time.sleep(1)
