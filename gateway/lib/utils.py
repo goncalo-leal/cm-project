@@ -33,6 +33,17 @@ HEADER_PROTOCOLS = {
     0x5: 17,
 }
 
+COLORS = {
+    "red": 0xff0000,
+    "orange": 0xffa500,
+    "yellow": 0xffff00,
+    "green": 0x00ff00,
+    "cyan": 0x00ffff,
+    "blue": 0x0000ff,
+    "purple": 0x800080,
+    "white": 0xffffff,
+}
+
 # ----------------------------------
 
 # format of log message with time and packet information
@@ -94,16 +105,6 @@ def wifi_connect(wifi_config: dict, retries: int = None) -> WLAN:
 # ----------------------------------
 # LoRa functions:
 
-# def config():
-#     # Lora Configuration:
-#     lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868)
-
-#     # Socket Configuration:
-#     s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-#     s.setblocking(False)
-
-#     return lora, s
-
 def get_lora_socket() -> (LoRa, socket.socket):
     # TODO: we should be able to change the frequency and the bandwidth
     
@@ -135,14 +136,17 @@ def get_mqtt_client(mqtt_config: dict, sub_cb: function) -> MQTTClient:
 buffer = []
 
 # ----------------------------------
+# Protocol functions:
 
 # parse packet depending on protocol and it's data, 
 # if param is true then it's a tcp packet
 def parse_packet(packet, param=None):
+    print("PACKET: ", packet)
     id = struct.unpack('!B', packet[:1])[0]
 
     if id not in PROTOCOLS:
-        raise Exception('Unknown protocol: ', id)
+        # raise Exception('Unknown protocol: ', id)
+        return []
 
     if param:
         size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
@@ -165,16 +169,16 @@ def get_buffer():
     return buffer
 
 # decreses timeout of each packet in buffer and discard if timeout is 0
-def decrease_or_discard():
+def decrease_or_discard(packet_loss):
     # Alterei esta função porque o main não deve 
     # ter capacidade de alterar o buffer
 
     for packet in buffer:
-        # packet[1] = timeout
         packet[1] -= 1
         if packet[1] <= 0:
+            packet_loss += 1
             buffer.remove(packet)
-
+    return packet_loss
 
 # check if a packet with the same params exists in buffer, and return it
 def exist_in_buffer(params):
@@ -218,7 +222,7 @@ def icmp_reply(src, dest, s):
         raise Exception('Invalid MAC address')
 
     packet = [0x1, 20, 16, src, dest]
-    buffer.append(packet + [time.time()])
+    # buffer.append(packet + [time.time()])
 
     reply = compose_packet(packet)
     s.send(reply)
@@ -243,7 +247,7 @@ def arp_response(src, dest, device_name, s):
         raise Exception('Invalid MAC address')
 
     packet = [0x7, 20, 16, src, dest, device_name]
-    buffer.append(packet + [time.time()])
+    # buffer.append(packet + [time.time()])
 
     reply = compose_packet(packet)
     s.send(reply)
