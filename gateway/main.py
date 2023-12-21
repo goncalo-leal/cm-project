@@ -68,7 +68,7 @@ known_nodes = set()
 active_nodes = set()
 mac_to_devices = {}
 arp_timeout = 60
-keepalive = 30
+keepalive = 23
 packet_loss = 0
 
 messages = [
@@ -96,8 +96,13 @@ messages = [
 
 next_message = None
 info = None
+messages_sent = 0
 
 while True:
+    if messages_sent == 50:
+        print("THE END")
+        break
+
     pycom.rgbled(0x00ff00)
     # utils.log_message("buffer", utils.get_buffer())
 
@@ -109,7 +114,7 @@ while True:
     if arp_timeout == 60:
         # _thread.start_new_thread(utils.arp_request, (board["mac"], board["name"], lora_socket))
         utils.arp_request(
-            board["mac"], board["name"], lora_socket
+            board["mac"], board["name"].encode('utf-8'), lora_socket
         )
         arp_timeout = 0
 
@@ -118,12 +123,13 @@ while True:
     # Testing connectivity
     if keepalive == 30:
         keepalive = 0
-        for node in known_nodes:
-            if not utils.exist_in_buffer([(0,0),[3, board["mac"]],(4,node)]):
-                # _thread.start_new_thread(utils.icmp_request, (board["mac"], node, lora_socket))
-                utils.icmp_request(
-                    board["mac"], node, lora_socket
-                )
+        if len(known_nodes) > 0:
+            for node in known_nodes:
+                if not utils.exist_in_buffer([(0,0),[3, board["mac"]],(4,node)]):
+                    # _thread.start_new_thread(utils.icmp_request, (board["mac"], node, lora_socket))
+                    utils.icmp_request(
+                        board["mac"], node, lora_socket
+                    )
     
     # if there is a message send through tcp
     devices_to_mac = {v: k for k, v in mac_to_devices.items()}
@@ -136,6 +142,8 @@ while True:
                     utils.tcp_syn(
                         board["mac"], node, lora_socket
                     )
+                    time.sleep(0.1)
+
         elif next_message["device"] in devices_to_mac:
             # send to specific node
             if not utils.exist_in_buffer([(0, 0x2), (3, board["mac"]), (4, devices_to_mac[next_message["device"]])]):
@@ -148,21 +156,16 @@ while True:
         # get next message
         next_message = messages.pop(0)
         print("MESSAGES",len(messages))
-        # TODO: delete this DEMO ONLY
-        #messages.append(next_message)
+        # TODO: delete this TESTING ONLY
+        messages.append(next_message)
+        messages_sent += 1
 
     # Receive LoRa packets
     packet = lora_socket.recv(100)
     if packet:
         # packet is not empty
 
-        # print("PACKET: ", packet)
-        try:
-            # unpack packet
-            data = utils.parse_packet(packet)
-        except Exception:
-            # Probably is a tcp packet
-            data = utils.parse_packet(packet, param=True)
+        data = utils.parse_packet(packet)
 
         # utils.log_message("receiver",data)
 

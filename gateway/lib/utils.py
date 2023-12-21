@@ -20,8 +20,8 @@ PROTOCOLS = {
     0x3: '!BBH8s8sBB',           # TCP SynAck: id, timeout, size, MAC src, MAC dest, synID, ackID   
     0x4: '!BBQ8s8sB%ds',         # TCP Ack: id, timeout, size, MAC src, MAC dest, ackID, data
     0x5: '!BBH8s8sB',            # TCP Fin: id, timeout, size, MAC src, MAC dest, finID -> If it is ackID + 1 from ACK then close connection and its ok, if it's different then it's wrong and its tcp failed
-    0x6: '!BBH8s8s8s',           # ARP Request: id, timeout, size, MAC src, MAC dest
-    0x7: '!BBH8s8s8s',           # ARP Response: id, timeout, size, MAC dst, MAC src
+    0x6: '!BBH8s8s7s',           # ARP Request: id, timeout, size, MAC src, MAC dest
+    0x7: '!BBH8s8s7s',           # ARP Response: id, timeout, size, MAC dst, MAC src
 }
 
 HEADER_PROTOCOLS = {
@@ -42,6 +42,7 @@ COLORS = {
     "blue": 0x0000ff,
     "purple": 0x800080,
     "white": 0xffffff,
+    "off": 0x000000
 }
 
 # ----------------------------------
@@ -109,7 +110,8 @@ def get_lora_socket() -> (LoRa, socket.socket):
     # TODO: we should be able to change the frequency and the bandwidth
     
     # Lora config:
-    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, tx_power=11, bandwidth=LoRa.BW_125KHZ, sf=8)
+    # lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, tx_power=11, bandwidth=LoRa.BW_500KHZ, sf=8)
+    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, sf=12)
 
     # Socket config:
     lora_socket = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
@@ -142,17 +144,16 @@ buffer = []
 
 # parse packet depending on protocol and it's data, 
 # if param is true then it's a tcp packet
-def parse_packet(packet, param=None):
+def parse_packet(packet):
     print("PACKET: ", packet)
     id = struct.unpack('!B', packet[:1])[0]
     print(id)
-    print(param)
 
     if id not in PROTOCOLS:
         # raise Exception('Unknown protocol: ', id)
         return []
 
-    if param:
+    if id == 0x4:
         size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
         expected_size = struct.calcsize(PROTOCOLS[id] % size)
         if len(packet) < expected_size:

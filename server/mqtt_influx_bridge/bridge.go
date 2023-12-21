@@ -41,7 +41,7 @@ type MQTTMessage struct {
 var influx_client influxdb.Client
 
 var config Config
-var lora_config = "250_12"
+var lora_config = "cm-project"
 
 func init() {
 	// Read the configuration from the environment
@@ -59,6 +59,13 @@ func init() {
 
 func main() {
     println("Hello, world.")
+
+	// Get cli parameters
+	if len(os.Args) > 1 {
+		lora_config = os.Args[1]
+	}
+
+	println("LoRa config:", lora_config)
 	
 	// Create a channel to receive OS signals
 	quit := make(chan os.Signal, 1)
@@ -174,6 +181,15 @@ func parseMessage(msg paho.Message) (MQTTMessage, error) {
 			fmt.Println("Error:", err)
 			return MQTTMessage{}, err
 		}
+
+	case "packet_loss":
+		// Convert string to float64
+		value, err = strconv.ParseFloat(string(msg.Payload()), 64)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return MQTTMessage{}, err
+		}
+
 	case "color":
 		return MQTTMessage{
 			Device: device,
