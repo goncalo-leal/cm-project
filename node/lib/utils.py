@@ -1,5 +1,4 @@
 from network import LoRa
-from network import WLAN
 import machine
 import struct
 import socket
@@ -19,8 +18,8 @@ PROTOCOLS = {
     0x3: '!BBH8s8sBB',           # TCP SynAck: id, timeout, size, MAC src, MAC dest, synID, ackID   
     0x4: '!BBQ8s8sB%ds',         # TCP Ack: id, timeout, size, MAC src, MAC dest, ackID, data
     0x5: '!BBH8s8sB',            # TCP Fin: id, timeout, size, MAC src, MAC dest, finID -> If it is ackID + 1 from ACK then close connection and its ok, if it's different then it's wrong and its tcp failed
-    0x6: '!BBH8s8s8s',           # ARP Request: id, timeout, size, MAC src, MAC dest
-    0x7: '!BBH8s8s8s',           # ARP Response: id, timeout, size, MAC dst, MAC src
+    0x6: '!BBH8s8s7s',           # ARP Request: id, timeout, size, MAC src, MAC dest
+    0x7: '!BBH8s8s7s',           # ARP Response: id, timeout, size, MAC dst, MAC src
 }
 
 HEADER_PROTOCOLS = {
@@ -33,15 +32,15 @@ HEADER_PROTOCOLS = {
 }
 
 COLORS = {
-    "red":      0xff0000,
-    "orange":   0xffa500,
-    "yellow":   0xffff00,
-    "green":    0x00ff00,
-    "cyan":     0x00ffff,
-    "blue":     0x0000ff,
-    "purple":   0x800080,
-    "white":    0xffffff,
-    "off":      0x000000,
+    "red": 0xff0000,
+    "orange": 0xffa500,
+    "yellow": 0xffff00,
+    "green": 0x00ff00,
+    "cyan": 0x00ffff,
+    "blue": 0x0000ff,
+    "purple": 0x800080,
+    "white": 0xffffff,
+    "off": 0x000000,
 }
 
 # ----------------------------------
@@ -66,6 +65,41 @@ def log_message(message,arg1=None,arg2=None):
 
     print(log)
 
+# ----------------------------------
+
+def load_config() -> dict:
+    # the config.json file is loaded to the device as part of the build process
+    with open('/flash/gateway_config.json','r') as fp:
+        buf = json.load(fp)
+    return buf
+
+def wifi_connect(wifi_config: dict, retries: int = None) -> WLAN:
+    if retries is not None and retries <= 0:
+        raise Exception('All WiFi connection attempts failed')
+
+    print('Connecting to WiFi...')
+    wlan = WLAN(mode=WLAN.STA)
+    wlan.connect(
+        ssid=wifi_config['ssid'],
+        auth=(WLAN.WPA2, wifi_config['password']),
+        timeout=5000
+    )
+
+    try:
+        while not wlan.isconnected():
+            machine.idle()
+        print("Connected to WiFi\n")
+        pycom.rgbled(0x103300)
+    except:
+        print("Error connecting to WiFi")
+        pycom.rgbled(0xff0000)
+
+        # Wait 5 seconds and try again
+        time.sleep(5)
+        wifi_connect(wifi_config, retries - 1 if retries is not None else None)
+    
+    return wlan
+
 
 # ----------------------------------
 # LoRa functions:
@@ -74,14 +108,29 @@ def get_lora_socket() -> (LoRa, socket.socket):
     # TODO: we should be able to change the frequency and the bandwidth
     
     # Lora config:
-    # lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868)
-    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, tx_power=11, bandwidth=LoRa.BW_125KHZ, sf=8)
+    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, sf=7)
 
     # Socket config:
     lora_socket = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
     lora_socket.setblocking(False)
 
+    log_message("Lora status", lora.stats())
+
     return lora, lora_socket
+
+# ----------------------------------
+# MQTT functions:
+
+def get_mqtt_client(mqtt_config: dict, sub_cb: function) -> MQTTClient:
+    mqtt_client = MQTTClient(
+        mqtt_config["client_id"],
+        mqtt_config["server"],
+        port=mqtt_config["port"]
+    )
+    # the callback is called when a message is received
+    # mqtt_client.set_callback(sub_cb)
+    mqtt_client.connect()
+    return mqtt_client
 
 # ----------------------------------
 
@@ -92,17 +141,16 @@ buffer = []
 
 # parse packet depending on protocol and it's data, 
 # if param is true then it's a tcp packet
-def parse_packet(packet, param=None):
+def parse_packet(packet):
+    print("PACKET: ", packet)
     id = struct.unpack('!B', packet[:1])[0]
+    print(id)
 
     if id not in PROTOCOLS:
-        # TODO: we cant raise an exception
         # raise Exception('Unknown protocol: ', id)
         return []
 
-    if param:
-        # size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
-        # return list(struct.unpack(PROTOCOLS[id] % size, packet))
+    if id == 0x4:
         size = struct.unpack('!Q', packet[2:10])[0] - HEADER_PROTOCOLS[id]
         expected_size = struct.calcsize(PROTOCOLS[id] % size)
         if len(packet) < expected_size:
@@ -216,7 +264,7 @@ def tcp_syn(src, dest, s):
 
     synID = ord(os.urandom(1))
 
-    packet = [0x2, 20, 17, src, dest, synID]
+    packet = [0x2, 10, 17, src, dest, synID]
     buffer.append(packet + [time.time()])
 
     syn = compose_packet(packet)
@@ -231,7 +279,7 @@ def tcp_synack(src, dest, synID, s):
     ackID = synID + 1                 # TCP Behaviour -> ackID = synID + 1
     synID = ord(os.urandom(1))
 
-    packet = [0x3, 20, 18, src, dest, synID, ackID]
+    packet = [0x3, 10, 18, src, dest, synID, ackID]
     buffer.append(packet + [time.time()])
 
     synack = compose_packet(packet)
@@ -246,7 +294,7 @@ def tcp_ack(src, dest, synID, data, s):
     ackID = synID + 1                   # TCP Behaviour -> ackID = synID + 1
     size = len(data)
 
-    packet = [0x4, 20, size + HEADER_PROTOCOLS[0x4], src, dest, ackID, data]
+    packet = [0x4, 10, size + HEADER_PROTOCOLS[0x4], src, dest, ackID, data]
     buffer.append(packet + [time.time()])
 
     ack = compose_packet(
@@ -262,7 +310,7 @@ def tcp_fin(src, dest, ackID, s):
 
     finID = ackID + 1
 
-    packet = [0x5, 20, 17, src, dest, finID]
+    packet = [0x5, 10, 17, src, dest, finID]
     buffer.append(packet + [time.time()])
 
     fin = compose_packet(packet)

@@ -1,13 +1,13 @@
 {
     "network":
     {
-        "ssid": "goncalo-x1",
-        "password": "yBJV3Jg1"
+        "ssid": "LAPTOP-J4N3BEUU",
+        "password": "1780=k8L"
     },
     "mqtt":
     {
         "client_id": "gateway",
-        "server": "10.42.0.1",
+        "server": "192.168.137.1",
         "port": 1883,
         "topics": {
             "publish": "cm-project/gateway",

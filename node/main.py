@@ -21,7 +21,7 @@ board = {
 
 pycom.rgbled(utils.COLORS[board["color"]])
 
-info_interval = 10
+info_interval = 17
 info_to_send = {"name": board["name"], "status": board["status"], "color": board["color"]}
 
 while True:
@@ -41,10 +41,8 @@ while True:
     packet = lora_socket.recv(100)
 
     if packet:
-        try:
-            data = utils.parse_packet(packet)
-        except Exception:
-            data = utils.parse_packet(packet, param=True)
+        
+        data = utils.parse_packet(packet)
 
         utils.log_message("receiver", data)
 
@@ -60,7 +58,7 @@ while True:
         # ARP
         elif data[0] == 0x6 and not utils.exist_in_buffer([(0, 0x7), [3, board["mac"]], (4, data[3])]):
             # _thread.start_new_thread(utils.arp_response, (board["mac"], data[3], board["name"], lora_socket))
-            utils.arp_response(board["mac"], data[3], board["name"], lora_socket)
+            utils.arp_response(board["mac"], data[3], board["name"].encode('utf-8'), lora_socket)
             board["gateway"] = data[3]
         
         # TCP

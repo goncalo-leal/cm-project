@@ -111,7 +111,7 @@ def get_lora_socket() -> (LoRa, socket.socket):
     
     # Lora config:
     # lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, tx_power=11, bandwidth=LoRa.BW_500KHZ, sf=8)
-    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, sf=12)
+    lora = LoRa(mode=LoRa.LORA, region=LoRa.EU868, tx_power=0)
 
     # Socket config:
     lora_socket = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
